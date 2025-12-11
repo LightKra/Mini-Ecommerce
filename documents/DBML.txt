@@ -1,0 +1,134 @@
+//--------------------------------------------------------------------
+// USERS & AUTH
+//--------------------------------------------------------------------
+
+Table users {
+  id              int [pk, increment]
+  name            varchar(100)
+  email           varchar(150) [unique]
+  password        varchar(255)
+  role_id         int
+  created_at      datetime
+  updated_at      datetime
+}
+
+Table roles {
+  id              int [pk, increment]
+  name            varchar(50) // admin, customer
+}
+
+Table tokens {
+  id              int [pk, increment]
+  user_id         int
+  token           varchar(255)
+  expires_at      datetime
+  created_at      datetime
+}
+
+Ref: users.role_id > roles.id
+Ref: tokens.user_id > users.id
+
+//--------------------------------------------------------------------
+// PRODUCT CATALOG
+//--------------------------------------------------------------------
+
+Table categories {
+  id              int [pk, increment]
+  name            varchar(100)
+  slug            varchar(150) [unique]
+  created_at      datetime
+  updated_at      datetime
+}
+
+Table products {
+  id              int [pk, increment]
+  name            varchar(150)
+  slug            varchar(200) [unique]
+  description     text
+  price           decimal(10,2)
+  stock           int
+  category_id     int
+  created_at      datetime
+  updated_at      datetime
+}
+
+Table product_images {
+  id              int [pk, increment]
+  product_id      int
+  url             varchar(255)
+  alt             varchar(255)
+}
+
+Ref: products.category_id > categories.id
+Ref: product_images.product_id > products.id
+
+//--------------------------------------------------------------------
+// CART SYSTEM
+//--------------------------------------------------------------------
+
+Table carts {
+  id              int [pk, increment]
+  user_id         int
+  created_at      datetime
+  updated_at      datetime
+}
+
+Table cart_items {
+  id              int [pk, increment]
+  cart_id         int
+  product_id      int
+  quantity        int
+  created_at      datetime
+  updated_at      datetime
+}
+
+Ref: carts.user_id > users.id
+Ref: cart_items.cart_id > carts.id
+Ref: cart_items.product_id > products.id
+
+//--------------------------------------------------------------------
+// ORDERS
+//--------------------------------------------------------------------
+
+Table orders {
+  id              int [pk, increment]
+  user_id         int
+  address_id      int
+  status          varchar(50) // pending, paid, shipped, delivered, cancelled
+  total           decimal(10,2)
+  created_at      datetime
+  updated_at      datetime
+}
+
+Table order_items {
+  id              int [pk, increment]
+  order_id        int
+  product_id      int
+  quantity        int
+  price           decimal(10,2)
+}
+
+Ref: orders.user_id > users.id
+Ref: order_items.order_id > orders.id
+Ref: order_items.product_id > products.id
+
+//--------------------------------------------------------------------
+// ADDRESSES
+//--------------------------------------------------------------------
+
+Table addresses {
+  id              int [pk, increment]
+  user_id         int
+  full_name       varchar(100)
+  phone           varchar(50)
+  address_line1   varchar(200)
+  address_line2   varchar(200)
+  city            varchar(100)
+  province        varchar(100)
+  country         varchar(100)
+  postal_code     varchar(20)
+  created_at      datetime
+}
+
+Ref: addresses.user_id > users.id
+Ref: orders.address_id > addresses.id

@@ -1,0 +1,24 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node modules (each project has its own)
+# node_modules/  # Commented because subprojects have their own
+
+# Docker volumes data (if any local)
+.docker-data/
+

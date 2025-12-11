@@ -1,0 +1,99 @@
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: mini-ecommerce-db-prod
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MYSQL_USER: ${DB_USERNAME:-ecommerce}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-ecommerce}
+      MYSQL_DATABASE: ${DB_DATABASE:-mini_ecommerce}
+    volumes:
+      - mysql_data_prod:/var/lib/mysql
+    networks:
+      - mini-ecommerce-network-prod
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${DB_ROOT_PASSWORD:-root}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    command: --default-authentication-plugin=mysql_native_password
+
+  # NestJS Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mini-ecommerce-backend-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: ${DB_USERNAME:-ecommerce}
+      DB_PASSWORD: ${DB_PASSWORD:-ecommerce}
+      DB_DATABASE: ${DB_DATABASE:-mini_ecommerce}
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-1d}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - mini-ecommerce-network-prod
+
+  # phpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin:5.2
+    container_name: mini-ecommerce-phpmyadmin-prod
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: ${DB_USERNAME:-ecommerce}
+      PMA_PASSWORD: ${DB_PASSWORD:-ecommerce}
+      UPLOAD_LIMIT: 50M
+    ports:
+      - "8080:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - mini-ecommerce-network-prod
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mini-ecommerce-frontend-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://localhost:3000/api
+    ports:
+      - "3001:3000"
+    depends_on:
+      - backend
+    networks:
+      - mini-ecommerce-network-prod
+
+networks:
+  mini-ecommerce-network-prod:
+    driver: bridge
+
+volumes:
+  mysql_data_prod:

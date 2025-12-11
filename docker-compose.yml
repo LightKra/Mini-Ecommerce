@@ -1,0 +1,116 @@
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: mini-ecommerce-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MYSQL_USER: ${DB_USERNAME:-ecommerce}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-ecommerce}
+      MYSQL_DATABASE: ${DB_DATABASE:-mini_ecommerce}
+    ports:
+      - "${DB_PORT:-3307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - mini-ecommerce-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${DB_ROOT_PASSWORD:-root}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: --default-authentication-plugin=mysql_native_password
+
+  # NestJS Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: mini-ecommerce-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: ${DB_USERNAME:-ecommerce}
+      DB_PASSWORD: ${DB_PASSWORD:-ecommerce}
+      DB_DATABASE: ${DB_DATABASE:-mini_ecommerce}
+      JWT_SECRET: ${JWT_SECRET:-69372303fbb8832fa3182e412f801599}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-1d}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/test:/app/test
+      - backend_node_modules:/app/node_modules
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - mini-ecommerce-network
+    command: npm run start:dev
+
+  # phpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin:5.2
+    container_name: mini-ecommerce-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: ${DB_USERNAME:-ecommerce}
+      PMA_PASSWORD: ${DB_PASSWORD:-ecommerce}
+      UPLOAD_LIMIT: 50M
+    ports:
+      - "8080:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - mini-ecommerce-network
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: mini-ecommerce-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:3000/api
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./frontend/app:/app/app
+      - ./frontend/public:/app/public
+      - frontend_node_modules:/app/node_modules
+      - frontend_next:/app/.next
+    depends_on:
+      - backend
+    networks:
+      - mini-ecommerce-network
+    command: npm run dev
+
+networks:
+  mini-ecommerce-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  backend_node_modules:
+  frontend_node_modules:
+  frontend_next:
